@@ -44,7 +44,7 @@ public class HelloClient {
 				 * */
 				ch.writeAndFlush(line + "\r\n");
 			}
-		} finally {
+		} finally { 
 			// The connection is closed automatically on shutdown.
 			group.shutdownGracefully();
 		}
