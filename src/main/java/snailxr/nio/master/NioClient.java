@@ -4,13 +4,18 @@ package snailxr.nio.master;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class NioClient implements Runnable {
 	// The host:port combination to connect to
@@ -117,6 +122,7 @@ public class NioClient implements Runnable {
 		// Attempt to read off the channel
 		int numRead;
 		try {
+		   
 			numRead = socketChannel.read(this.readBuffer);
 		} catch (IOException e) {
 			// The remote forcibly closed the connection, cancel
@@ -225,7 +231,7 @@ public class NioClient implements Runnable {
 
 	public static void main(String[] args) {
 		try {
-			NioClient client = new NioClient(InetAddress.getByName("www.google.com"), 80);
+			NioClient client = new NioClient(InetAddress.getByName("www.baidu.com"), 80);
 			Thread t = new Thread(client);
 			t.setDaemon(true);
 			t.start();

@@ -10,8 +10,20 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * http://rox-xmlrpc.sourceforge.net/niotut/
+ * 
+ * @Description: TODO
+ * @author chenjianlin
+ * @date 2015年12月2日 上午11:42:22
+ */
 public class NioServer implements Runnable {
 	// The host:port combination to listen on
 	private InetAddress hostAddress;
@@ -57,10 +69,40 @@ public class NioServer implements Runnable {
 			}
 		}
 
-		// Finally, wake up our selecting thread so it can make the required changes
+		// Finally, wake up our selecting thread so it can make the required
+		// changes
 		this.selector.wakeup();
 	}
 
+	/*
+	 * Modify the selector from the selecting thread only
+	 * 
+	 * If you look closely at the NIO documentation you'll come across the
+	 * occasional mention of naive implementations blocking where more efficient
+	 * implementations might not, usually in the context of altering the state
+	 * of the selector from another thread. If you plan on writing code against
+	 * the NIO libraries that must run on multiple platforms you have to assume
+	 * the worst. This isn't just hypothetical either, a little experimentation
+	 * should be enough to convince you that Sun's Linux implementation is
+	 * "naive". If you plan on targeting one platform only feel free to ignore
+	 * this advice but I'd recommend against it. The thing about code is that it
+	 * oftens ends up in the oddest of places.
+	 * 
+	 * As a result, if you plan to hang onto your sanity don't modify the
+	 * selector from any thread other than the selecting thread. This includes
+	 * modifying the interest ops set for a selection key, registering new
+	 * channels with the selector, and cancelling existing channels.
+	 * 
+	 * A number of these changes are naturally initiated by threads that aren't
+	 * the selecting thread. Think about sending data. This pretty much always
+	 * has to be initiated by a calling thread that isn't the selecting thread.
+	 * Don't try to modify the selector (or a selection key) from the calling
+	 * thread. Queue the operation where the selecting thread can get to it and
+	 * call Selector.wakeup. This will wake the selecting thread up. All it
+	 * needs to do is check if there are any pending changes, and if there are
+	 * apply them and go back to selecting on the selector. There are variations
+	 * on this but that's the general idea.
+	 */
 	public void run() {
 		while (true) {
 			try {
@@ -79,8 +121,8 @@ public class NioServer implements Runnable {
 				}
 
 				// Wait for an event one of the registered channels
-				this.selector.select();
-
+				int i=this.selector.select();
+                System.out.println("select.................................................."+i);
 				// Iterate over the set of keys for which events are available
 				Iterator selectedKeys = this.selector.selectedKeys().iterator();
 				while (selectedKeys.hasNext()) {
@@ -93,10 +135,13 @@ public class NioServer implements Runnable {
 
 					// Check what event is available and deal with it
 					if (key.isAcceptable()) {
+						
 						this.accept(key);
 					} else if (key.isReadable()) {
+						System.out.println("read..................................................................");
 						this.read(key);
 					} else if (key.isWritable()) {
+						System.out.println("write..................................................................");
 						this.write(key);
 					}
 				}
@@ -107,7 +152,8 @@ public class NioServer implements Runnable {
 	}
 
 	private void accept(SelectionKey key) throws IOException {
-		// For an accept to be pending the channel must be a server socket channel.
+		// For an accept to be pending the channel must be a server socket
+		// channel.
 		ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
 
 		// Accept the connection and make it non-blocking
@@ -139,6 +185,7 @@ public class NioServer implements Runnable {
 		}
 
 		if (numRead == -1) {
+			System.out.println("关闭了。。。");
 			// Remote entity shut the socket down cleanly. Do the
 			// same from our end and cancel the channel.
 			key.channel().close();
@@ -188,7 +235,7 @@ public class NioServer implements Runnable {
 		InetSocketAddress isa = new InetSocketAddress(this.hostAddress, this.port);
 		serverChannel.socket().bind(isa);
 
-		// Register the server socket channel, indicating an interest in 
+		// Register the server socket channel, indicating an interest in
 		// accepting new connections
 		serverChannel.register(socketSelector, SelectionKey.OP_ACCEPT);
 
@@ -197,8 +244,10 @@ public class NioServer implements Runnable {
 
 	public static void main(String[] args) {
 		try {
+			// worker用来处理读到的数据
 			EchoWorker worker = new EchoWorker();
 			new Thread(worker).start();
+			// server处理读、写数据
 			new Thread(new NioServer(null, 9090, worker)).start();
 		} catch (IOException e) {
 			e.printStackTrace();

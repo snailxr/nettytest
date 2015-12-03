@@ -18,7 +18,7 @@ public class NioClient {
     private static int blockSize =32;
     private static ByteBuffer sendBuffer=ByteBuffer.allocate(blockSize);
     private static  ByteBuffer receiveBuffer=ByteBuffer.allocate(blockSize);
-    private final static InetSocketAddress serverAddress=new InetSocketAddress("127.0.0.1",8030);
+    private final static InetSocketAddress serverAddress=new InetSocketAddress("127.0.0.1",9090);
     public static void main(String[] args) throws IOException {
         System.out.println("........");
         SocketChannel socketChannel=SocketChannel.open();
@@ -63,7 +63,8 @@ public class NioClient {
                         receiveText=new String(receiveBuffer.array(),0,count);
                         System.out.println(receiveText);
                        receiveBuffer.clear();
-                        client.register(selector,SelectionKey.OP_WRITE);
+                        //client.register(selector,SelectionKey.OP_WRITE);
+                       selectionKey.interestOps(SelectionKey.OP_WRITE);
                     }else if(count==0){
                     	
                     }else{
@@ -76,9 +77,8 @@ public class NioClient {
                     sendBuffer.put(sendText.getBytes());
                     sendBuffer.flip();
                     client.write(sendBuffer);
-                    client.register(selector,SelectionKey.OP_READ);
-
-
+                    //client.register(selector,SelectionKey.OP_READ);
+                    selectionKey.interestOps(SelectionKey.OP_READ);
                 }
                 iterator.remove();
             }
